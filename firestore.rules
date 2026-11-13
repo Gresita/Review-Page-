@@ -1,0 +1,57 @@
+rules_version = '2';
+
+// Review Page access rules.
+// Members are listed in members/{emailLowercase} with role: admin | decider | reviewer.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null && request.auth.token.email != null; }
+    function myEmail() { return request.auth.token.email.lower(); }
+    function memberPath() { return /databases/$(database)/documents/members/$(myEmail()); }
+    function isMember() { return signedIn() && exists(memberPath()); }
+    function myRole() { return get(memberPath()).data.role; }
+    function isAdmin() { return isMember() && myRole() == 'admin'; }
+    function canDecide() { return isMember() && myRole() in ['admin', 'decider']; }
+
+    match /members/{email} {
+      allow read: if signedIn() && (email == myEmail() || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    match /reviews/{reviewId} {
+      function review() { return get(/databases/$(database)/documents/reviews/$(reviewId)).data; }
+      function isOpen() { return review().status == 'open' && request.time < review().deadline; }
+
+      allow read: if isMember();
+      allow create: if isAdmin();
+      allow delete: if isAdmin();
+      // Admin can change anything; the decider can only open/close (and move the deadline when reopening).
+      allow update: if isAdmin()
+        || (canDecide() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'deadline']));
+
+      match /versions/{versionId} {
+        allow read: if isMember();
+        allow write: if isAdmin();
+      }
+
+      match /comments/{commentId} {
+        allow read: if isMember();
+
+        allow create: if isMember() && isOpen()
+          && request.resource.data.authorEmail == myEmail()
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 2000
+          && request.resource.data.status == 'open';
+
+        // Admin/decider can resolve or reopen any comment; authors can edit their own text while the review is open.
+        allow update: if canDecide()
+          || (isMember() && isOpen() && resource.data.authorEmail == myEmail()
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text']));
+
+        allow delete: if isAdmin()
+          || (isMember() && isOpen() && resource.data.authorEmail == myEmail());
+      }
+    }
+  }
+}

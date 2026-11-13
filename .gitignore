@@ -1,0 +1,20 @@
+# Firebase local state (project link is per machine/account; see .firebaserc.example)
+.firebaserc
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+
+# Secrets never go in this repo
+.env
+*.key
+service-account*.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local test output
+tests/out/

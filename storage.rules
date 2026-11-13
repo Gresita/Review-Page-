@@ -1,0 +1,25 @@
+rules_version = '2';
+
+// Videos live under reviews/{reviewId}/. Only admins upload; members watch.
+service firebase.storage {
+  match /b/{bucket}/o {
+    function memberPath() {
+      return /databases/(default)/documents/members/$(request.auth.token.email.lower());
+    }
+    function isMember() {
+      return request.auth != null && request.auth.token.email != null && firestore.exists(memberPath());
+    }
+    function isAdmin() {
+      return isMember() && firestore.get(memberPath()).data.role == 'admin';
+    }
+
+    match /reviews/{reviewId}/{fileName} {
+      allow read: if isMember();
+      // 2 GB max, video files only (keep in sync with maxUploadMb in public/js/config.js)
+      allow create, update: if isAdmin()
+        && request.resource.size < 2048 * 1024 * 1024
+        && request.resource.contentType.matches('video/.*');
+      allow delete: if isAdmin();
+    }
+  }
+}
