@@ -1,6 +1,6 @@
 import express from 'express';
-import { normalizeClient } from './lib/fields.js';
-import { loadProjects as defaultLoadProjects } from './lib/projects.js';
+import { normalizeClient, RATES_TO_AED, RATES_INFO } from './lib/fields.js';
+import { loadProjects as defaultLoadProjects, projectsUpdatedAt } from './lib/projects.js';
 import { filterProjects, applyGoldenVisaPreference, rankingInput, closestProjects } from './lib/match.js';
 import { ruleRank, scoreProject } from './lib/rank.js';
 import { requireAuth, authDisabled } from './lib/auth.js';
@@ -23,7 +23,14 @@ export function createApp({ loadProjects = defaultLoadProjects } = {}) {
       const projects = await loadProjects();
       const sorted = (key) => [...new Set(projects.map((p) => p[key]).filter(Boolean))]
         .sort((a, b) => a.localeCompare(b));
-      res.json({ areas: sorted('area'), developers: sorted('developer') });
+      res.json({
+        areas: sorted('area'),
+        developers: sorted('developer'),
+        rates: { ...RATES_TO_AED },
+        ratesDate: RATES_INFO.date,
+        ratesSource: RATES_INFO.source,
+        projectsUpdatedAt: projectsUpdatedAt(),
+      });
     } catch (err) {
       console.error('options failed:', err);
       res.status(502).json({ error: 'Could not load projects from Pixxi: ' + err.message });

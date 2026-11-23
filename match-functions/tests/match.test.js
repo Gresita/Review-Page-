@@ -178,3 +178,22 @@ test('closest projects fill up to 5 when few match, closest first', async () => 
   assert.ok(close.slice(1).every((p) => p.missed.length >= 1));
   assert.deepEqual(closestProjects(projects, client, 0), []);
 });
+
+test('live rate: EUR->AED from ECB EUR->USD and the dirham peg; filters use it', async () => {
+  const { eurToAedFromUsd } = await import('../lib/rates.js');
+  const { setRates, RATES_TO_AED, RATES_INFO, toAED } = await import('../lib/fields.js');
+  assert.equal(eurToAedFromUsd(1.099), 4.0361);         // 1.099 x 3.6725 = 4.03608
+  assert.throws(() => eurToAedFromUsd(undefined), /implausible/);
+  assert.throws(() => eurToAedFromUsd(25), /implausible/);
+  const before = RATES_TO_AED.EUR;
+  try {
+    setRates({ EUR: 4.2, XYZ: 9 }, { date: '2026-11-20', source: 'ECB' });
+    assert.equal(toAED(100, 'EUR'), 420);
+    assert.equal(RATES_TO_AED.XYZ, undefined);            // unknown currencies are ignored
+    assert.equal(RATES_INFO.date, '2026-11-20');
+    setRates({ EUR: -1 });                                // bad values are ignored
+    assert.equal(RATES_TO_AED.EUR, 4.2);
+  } finally {
+    setRates({ EUR: before }, { date: null, source: 'default' });
+  }
+});

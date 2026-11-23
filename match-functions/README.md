@@ -10,7 +10,9 @@ Match lives inside the Review Page: the page is `public/match/` (opened from the
 public/match/            the Match page (Review Page brand, same config.js and sign-in)
   shared/fields.js       GENERATED from match-functions/lib/fields.js
 match-functions/         Cloud Function matchApi (codebase "match")
-  lib/pixxi.js           live NEW projects from Pixxi, ACTIVE only, 1-hour cache
+  lib/pixxi.js           NEW projects from Pixxi, ACTIVE only
+  lib/snapshot.js        saved copy (Storage match-cache/projects.json) that searches read; written hourly by matchRefresh
+  lib/rates.js           EUR->AED from the ECB daily rate (frankfurter.dev) x the dirham peg 3.6725, checked hourly
   lib/projects.js        joins Pixxi with Firestore match_projects by pixxiId
   lib/match.js           filters (budget, type, bedrooms, ready/off-plan, payment years, down payment, area, developer, keys date) + Golden Visa sort
   lib/rank.js            ranking rules: must-haves, priority/goal (rental yield, off-plan), sea, area, developer, keys date

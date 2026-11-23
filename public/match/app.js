@@ -1,6 +1,6 @@
 import {
   FIELDS, FIELD_NAMES, QUESTIONS, emptyClient, normalizeValue,
-  isAnswered, CURRENCIES, fromAED,
+  isAnswered, CURRENCIES, fromAED, setRates, RATES_TO_AED, RATES_INFO,
 } from './shared/fields.js';
 import { initAuth, onUser, signInWithGoogle, signInWithEmail, authFetch } from './auth.js';
 // No sign-out here: Match shares the Review Page sign-in, so signing out happens on the Review Page only.
@@ -26,6 +26,8 @@ const T = {
     differs: 'Ndryshon në',
     overBy: (n) => `mbi buxhet me ${n}%`,
     showIn: 'Çmimet në',
+    rateLine: (eur, date) => `1 EUR = ${eur} AED (kursi i BQE-së, ${date})`,
+    updatedLine: (time) => `Projektet u përditësuan në ${time}`,
     signInTitle: 'Hyr për të vazhduar',
     signInGoogle: 'Hyr me Google',
     email: 'Email', password: 'Fjalëkalimi', signIn: 'Hyr', signOut: 'Dil',
@@ -92,6 +94,8 @@ const T = {
     differs: 'Differs on',
     overBy: (n) => `over budget by ${n}%`,
     showIn: 'Prices in',
+    rateLine: (eur, date) => `1 EUR = ${eur} AED (ECB rate, ${date})`,
+    updatedLine: (time) => `Projects updated at ${time}`,
     signInTitle: 'Sign in to continue',
     signInGoogle: 'Sign in with Google',
     email: 'Email', password: 'Password', signIn: 'Sign in', signOut: 'Sign out',
@@ -253,6 +257,9 @@ async function loadLiveOptions() {
     if (!res.ok) throw new Error();
     const data = await res.json();
     const lists = { area: data.areas, developer: data.developers };
+    // Same live rate as the server, so prices on the page match the budget filter.
+    if (data.rates) setRates(data.rates, { date: data.ratesDate, source: data.ratesSource });
+    projectsUpdatedAt = data.projectsUpdatedAt || null;
     for (const n of live) {
       const el = document.getElementById('f-' + n);
       const current = el.value;
@@ -384,6 +391,15 @@ function resultCard(p) {
   </li>`;
 }
 
+let projectsUpdatedAt = null;
+
+function infoLine() {
+  const bits = [];
+  if (RATES_INFO.date) bits.push(t().rateLine(RATES_TO_AED.EUR.toFixed(4), RATES_INFO.date));
+  if (projectsUpdatedAt) bits.push(t().updatedLine(new Date(projectsUpdatedAt).toLocaleTimeString(lang === 'en' ? 'en-GB' : 'sq-AL', { hour: '2-digit', minute: '2-digit' })));
+  return bits.length ? `<p class="muted info-line">${escapeHtml(bits.join(' · '))}</p>` : '';
+}
+
 function renderResults(data) {
   const out = $('#results');
   const parts = [];
@@ -392,6 +408,7 @@ function renderResults(data) {
     <label class="show-in">${t().showIn}
       <select id="showCurrency">${CURRENCIES.map((c) => `<option${c === cur ? ' selected' : ''}>${c}</option>`).join('')}</select>
     </label></div>`);
+  parts.push(infoLine());
   const hidden = Object.entries(data.excluded);
   if (hidden.length) {
     parts.push(`<p class="muted">${t().hidden} ${hidden.map(([r, n]) => `${escapeHtml(t().reasons[r] || r)} (${n})`).join(', ')}</p>`);

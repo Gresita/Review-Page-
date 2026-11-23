@@ -9,6 +9,18 @@ export const RATES_TO_AED = {
 };
 export const CURRENCIES = Object.keys(RATES_TO_AED);
 
+// The values above are only the starting point. The server replaces them with the live ECB rate
+// (lib/rates.js) and sends them to the page, which calls setRates() too, so filters and prices agree.
+export const RATES_INFO = { date: null, source: 'default' };
+
+export function setRates(rates, info = {}) {
+  for (const [code, rate] of Object.entries(rates || {})) {
+    if (code in RATES_TO_AED && Number(rate) > 0) RATES_TO_AED[code] = Number(rate);
+  }
+  if (info.date !== undefined) RATES_INFO.date = info.date;
+  if (info.source !== undefined) RATES_INFO.source = info.source;
+}
+
 // CANONICAL COPY: match-functions/lib/fields.js. public/match/shared/fields.js is generated from it.
 
 export function toAED(amount, currency) {

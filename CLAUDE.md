@@ -25,9 +25,9 @@ Video review tool for END Properties (Dubai real estate). Dion (decider) and man
 - Run `tests/e2e_local.py` against a local server after UI changes.
 
 ## Match (project search) lives alongside, not inside, the Review Page
-- Page: `public/match/` (own HTML, CSS, JS). Server: `match-functions/` (Cloud Function `matchApi`, codebase `match`, Pixxi + Firestore `match_projects`). Details in `match-functions/README.md`.
+- Page: `public/match/` (own HTML, CSS, JS). Server: `match-functions/` (codebase `match`: `matchApi` for the page, `matchRefresh` every hour saves Pixxi projects + the ECB EUR→AED rate to Storage `match-cache/projects.json`; Firestore `match_projects`). Details in `match-functions/README.md`.
 - The only shared points, keep them this way:
-  - `public/js/config.js` is read by `public/match/auth.js` (Firebase config only). Match never writes Review Page data, storage keys or collections.
+  - `public/js/config.js` is read by `public/match/auth.js` (Firebase config only). Match never writes Review Page data, storage keys or collections; in Storage it uses only `match-cache/` (server-side).
   - Same Firebase Auth. Match has no sign-out button, because signing out there would sign the user out of the Review Page too.
   - Review Page header shows the "Project match" link (`app.js` `renderHeader`, string `matchLink`), only for signed-in staff in firebase mode.
   - `firebase.json`: the `/api/**` → `matchApi` rewrite must stay before the `**` → `/index.html` rewrite; hosting `predeploy` regenerates `public/match/shared/fields.js`.

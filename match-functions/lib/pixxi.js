@@ -23,7 +23,8 @@ async function fetchPage(page, token) {
   return body.data;
 }
 
-async function fetchAll() {
+// Every NEW project in Pixxi, ACTIVE only, mapped. Used by the hourly refresh and as a fallback.
+export async function fetchPixxiAll() {
   const token = (process.env.PIXXI_API_KEY || '').trim();
   if (!token) throw new Error('PIXXI_API_KEY is not set');
   const raw = [];
@@ -41,7 +42,7 @@ async function fetchAll() {
 // Cached for 1 hour. If a refresh fails and an older copy exists, the older copy is used.
 export async function fetchPixxiProjects() {
   if (cache && Date.now() - cache.at < TTL_MS) return cache.projects;
-  inflight ??= fetchAll()
+  inflight ??= fetchPixxiAll()
     .then((projects) => {
       cache = { at: Date.now(), projects };
       return projects;
