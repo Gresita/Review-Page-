@@ -58,24 +58,32 @@ function renderSignIn() {
   });
 }
 
-function renderGuest() {
+// Guests must give a name so others know who commented. `signedIn` = a guest session already exists but has no name.
+function renderGuest(signedIn = false) {
   main.innerHTML = `<section class="signin">
     <h1 class="page-title">${t('guestTitle')}</h1>
     <p class="muted">${t('guestIntro')}</p>
     <form id="guest" class="signin-form" novalidate>
-      <div class="field"><label for="guest-name">${t('guestName')}</label><input id="guest-name" maxlength="60" autocomplete="name"></div>
+      <div class="field"><label for="guest-name">${t('guestName')}</label><input id="guest-name" maxlength="60" autocomplete="name" required></div>
       <button class="btn btn-primary" type="submit">${t('guestOpen')}</button>
       <p class="form-error" role="alert"></p>
     </form>
-    <p><button class="link-btn" id="staff" type="button">${t('staffSignIn')}</button></p>
+    ${signedIn ? '' : `<p><button class="link-btn" id="staff" type="button">${t('staffSignIn')}</button></p>`}
   </section>`;
+  const input = main.querySelector('#guest-name');
+  input.focus();
   main.querySelector('#guest').addEventListener('submit', async (e) => {
     e.preventDefault();
-    try { await store.signInGuest(main.querySelector('#guest-name').value.trim()); } catch (ex) {
-      main.querySelector('.form-error').textContent = t('errGeneric', { msg: ex.code || ex.message });
+    const name = input.value.trim();
+    const err = main.querySelector('.form-error');
+    if (!name) { err.textContent = t('errNameRequired'); input.focus(); return; }
+    try {
+      if (signedIn) { user = await store.setGuestName(name); route(); } else await store.signInGuest(name);
+    } catch (ex) {
+      err.textContent = t('errGeneric', { msg: ex.code || ex.message });
     }
   });
-  main.querySelector('#staff').addEventListener('click', () => { guestDismissed = true; route(); });
+  main.querySelector('#staff')?.addEventListener('click', () => { guestDismissed = true; route(); });
 }
 
 // Public root: no login form. Guests arrive through a review link; the team uses the small link below.
@@ -98,6 +106,7 @@ function route() {
     return;
   }
   if (user.anon && !m) { main.innerHTML = `<section class="signin"><p>${t('guestNeedLink')}</p></section>`; return; }
+  if (user.anon && !user.named) { renderGuest(true); return; }
   if (!user.role) { main.innerHTML = `<section class="signin"><p>${t('noAccess')}</p><p class="muted">${esc(user.email)}</p></section>`; return; }
   cleanup = m
     ? renderReview(main, { store, user, reviewId: decodeURIComponent(m[1]) })

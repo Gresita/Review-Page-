@@ -79,9 +79,17 @@ export const store = {
   async signInWithGoogle() { throw new Error('Google sign-in works only in firebase mode'); },
 
   async signInGuest(name) {
-    const m = { email: 'anon:' + newId(), name: name || 'Anonim', role: 'reviewer', anon: true };
+    const m = { email: 'anon:' + newId(), name: name || 'Anonim', role: 'reviewer', anon: true, named: !!name };
     localStorage.setItem(USER_KEY, JSON.stringify(m));
     authCb?.(m);
+  },
+
+  async setGuestName(name) {
+    const u = currentUser();
+    if (!u?.anon) return u;
+    const m = { ...u, name, named: true };
+    localStorage.setItem(USER_KEY, JSON.stringify(m));
+    return m;
   },
 
   async deleteReview(reviewId) {

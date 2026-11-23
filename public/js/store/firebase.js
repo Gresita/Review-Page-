@@ -44,7 +44,7 @@ export const store = {
       if (u.isAnonymous) {
         let nm = '';
         try { nm = localStorage.getItem('rp:guestName') || ''; } catch { /* ignore */ }
-        member = { email: 'anon:' + u.uid, name: nm || 'Anonim', role: 'reviewer', anon: true };
+        member = { email: 'anon:' + u.uid, name: nm || 'Anonim', role: 'reviewer', anon: true, named: !!nm };
         cb(member);
         return;
       }
@@ -78,6 +78,13 @@ export const store = {
   async signInGuest(name) {
     try { localStorage.setItem('rp:guestName', name || ''); } catch { /* ignore */ }
     await A.signInAnonymously(auth);
+  },
+
+  // A guest who is already signed in (anonymous session kept by the browser) but has no name yet.
+  async setGuestName(name) {
+    try { localStorage.setItem('rp:guestName', name); } catch { /* ignore */ }
+    if (member?.anon) { member.name = name; member.named = true; }
+    return member;
   },
 
   async signOut() { await A.signOut(auth); },
