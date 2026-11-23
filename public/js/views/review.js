@@ -444,6 +444,8 @@ export function renderReview(root, { store, user, reviewId }) {
   }
 
   // ── Send to Claude (/end-brochure-video) ─────────────
+  const MAX_CLAUDE_URL = 8000; // keep the link well under what browsers and servers accept
+
   async function sendToClaude() {
     const { md } = buildExport();
     const v = state.versions.find((x) => x.n === state.version);
@@ -459,9 +461,15 @@ export function renderReview(root, { store, user, reviewId }) {
       '',
       md,
     ].join('\n');
-    try { await navigator.clipboard.writeText(prompt); } catch { await openExport(); return; }
-    toast(t('sentClaude'));
-    window.open('https://claude.ai/new', '_blank', 'noopener');
+    // Claude opens with the request already typed in (?q=). Very long requests do not fit in a link,
+    // so those open an empty chat to paste into. The text is copied to the clipboard either way.
+    const prefill = 'https://claude.ai/new?q=' + encodeURIComponent(prompt);
+    const fits = prefill.length <= MAX_CLAUDE_URL;
+    let copied = true;
+    try { await navigator.clipboard.writeText(prompt); } catch { copied = false; }
+    if (!fits && !copied) { await openExport(); return; }
+    toast(t(fits ? 'sentClaudePrefilled' : 'sentClaude'));
+    window.open(fits ? prefill : 'https://claude.ai/new', '_blank', 'noopener');
   }
 
   // ── Data subscriptions ───────────────────────────────
