@@ -10,7 +10,7 @@ Faqe për review-n e videove. Dion dhe menaxhmenti e hapin videon nga një link 
 - Shënja në timeline dhe "pin" mbi video për çdo koment. Klikimi i komentit e çon videon te momenti i saktë.
 - Rolet: **admin** (ngarkon, mbyll, menaxhon), **decider** (Dion: fjala e fundit, mbyll review-n, shënon të rregulluar), **reviewer** (komenton).
 - Afati: pas afatit, ose kur mbyllet me dorë, nuk lejohen më komente (edhe në rregullat e Firebase).
-- "Eksporto për AI": tekst dhe JSON me të gjitha komentet, gati për skill-in `/review-consolidate`.
+- "Dërgo te Claude": kopjon të gjitha komentet si tekst, bashkë me udhëzimin dhe rregullat e ruajtura, dhe hap një chat të ri te Claude. I njëjti tekst punon edhe me skill-in `/review-consolidate`.
 - Shqip dhe anglisht.
 
 ## Struktura
@@ -91,7 +91,7 @@ Projekti është ndërtuar që të lëvizë pa ndryshime në kod.
 1. Admin-i ngarkon videon (ose versionin e ri) dhe vendos afatin.
 2. Linku i dërgohet Dion-it dhe menaxhmentit.
 3. Ata komentojnë mbi momentet e sakta deri në afat.
-4. Pas afatit (ose kur Dion e mbyll), admin-i klikon **Eksporto për AI** dhe e ngjit tekstin te Claude me `/review-consolidate`.
+4. Pas afatit (ose kur Dion e mbyll), admin-i klikon **Dërgo te Claude** dhe e ngjit tekstin në chat-in që hapet (ose te `/review-consolidate`).
 5. Claude kthen një listë të vetme ndryshimesh. Kur ka komente që bien ndesh, vendos Dion. Pastaj aplikohen ndryshimet dhe ngarkohet versioni i ri.
 
 ## Testi

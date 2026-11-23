@@ -101,7 +101,6 @@ export function renderReview(root, { store, user, reviewId }) {
         ${can.close(user) ? (r.status === 'closed'
           ? `<button class="btn btn-ghost" id="a-reopen" type="button">${t('reopen')}</button>`
           : `<button class="btn btn-ghost" id="a-close" type="button">${t('closeReview')}</button>`) : ''}
-        ${can.close(user) || can.upload(user) ? `<button class="btn btn-ghost" id="a-export" type="button">${t('exportAi')}</button>` : ''}
         ${can.upload(user) ? `<button class="btn btn-ghost" id="a-link" type="button">${t('copyLink')}</button>` : ''}
         ${can.upload(user) ? `<button class="btn btn-ghost" id="a-download" type="button">${t('downloadVideo')}</button>` : ''}
         ${can.close(user) || can.upload(user) ? `<button class="btn btn-primary" id="a-claude" type="button">${t('sendClaude')}</button>` : ''}
@@ -120,7 +119,6 @@ export function renderReview(root, { store, user, reviewId }) {
       }
       await store.updateReview(r.id, patch);
     });
-    $('#a-export')?.addEventListener('click', openExport);
     $('#a-claude')?.addEventListener('click', sendToClaude);
     $('#a-download')?.addEventListener('click', async () => {
       const v = state.versions.find((x) => x.n === state.version);
@@ -406,7 +404,7 @@ export function renderReview(root, { store, user, reviewId }) {
     });
   }
 
-  // ── Export for AI ────────────────────────────────────
+  // ── Export (text copied by "Send to Claude"; this window is its fallback when copying fails) ──
   function buildExport() {
     const r = state.review;
     const v = state.versions.find((x) => x.n === state.version);

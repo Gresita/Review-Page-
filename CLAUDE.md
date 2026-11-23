@@ -34,4 +34,4 @@ Video review tool for END Properties (Dubai real estate). Dion (decider) and man
 - Review Page changes never need a functions deploy. Match server changes: `firebase deploy --only functions:match` (needs `npm install` in `match-functions` first).
 
 ## Skills in this repo
-- `/review-consolidate` — turns an "Export for AI" text/JSON into one decided change list, flags conflicts (decider wins), and proposes reusable feedback rules.
+- `/review-consolidate` — turns the comment export (the text "Send to Claude" copies) into one decided change list, flags conflicts (decider wins), and proposes reusable feedback rules.

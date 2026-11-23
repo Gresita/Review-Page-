@@ -1,11 +1,11 @@
 ---
 name: review-consolidate
-description: Turn a Review Page export (the "Export for AI" text or JSON of frame comments on an END Properties video) into one clear change list, resolve conflicts with the decider's word, and propose reusable feedback rules. Use when the user pastes a Review Page export or asks to consolidate video review comments.
+description: Turn a Review Page export (the comment text the "Send to Claude" button copies, or an older "Export for AI" text/JSON, of frame comments on an END Properties video) into one clear change list, resolve conflicts with the decider's word, and propose reusable feedback rules. Use when the user pastes a Review Page export or asks to consolidate video review comments.
 ---
 
 # Review consolidate
 
-Input: the text or JSON from the Review Page **Export for AI** button. Each comment has a number, a time (`m:ss.s`), a position on the frame (x/y in % from top-left), the author, their role (`admin`, `decider`, `reviewer`), a status (`open` / `resolved`) and the text.
+Input: the comment text the Review Page **Send to Claude** button copies (older exports from the removed **Export for AI** button, text or JSON, work the same). Each comment has a number, a time (`m:ss.s`), a position on the frame (x/y in % from top-left), the author, their role (`admin`, `decider`, `reviewer`), a status (`open` / `resolved`) and the text.
 
 ## Steps
 

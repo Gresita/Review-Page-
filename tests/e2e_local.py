@@ -16,6 +16,7 @@ async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(executable_path=CHROME, args=['--autoplay-policy=no-user-gesture-required'])
         ctx = await b.new_context(viewport={'width': 1360, 'height': 900})
+        await ctx.grant_permissions(['clipboard-read', 'clipboard-write'], origin=BASE.rstrip('/'))
         pg = await ctx.new_page()
         pg.on('pageerror', lambda e: errors.append(f'pageerror: {e}'))
         pg.on('console', lambda m: errors.append(f'console.{m.type}: {m.text}') if m.type == 'error' and 'fonts.g' not in m.text else None)
@@ -66,6 +67,8 @@ async def main():
 
         # Sign in as Dion (decider) and add a comment, resolve one, then close
         await pg.click('#signout')
+        if await pg.locator('#staff').count():  # on a review link, signed-out users first see the guest screen
+            await pg.click('#staff')
         await pg.click('.demo-user[data-email="dion@end.local"]')
         await pg.wait_for_selector('#vid')
         await pg.wait_for_function("document.querySelector('#vid') && document.querySelector('#vid').videoWidth > 0", timeout=15000)
@@ -89,11 +92,11 @@ async def main():
         await pg.wait_for_timeout(300)
         composer_hidden = await pg.locator('#composer').is_hidden()
 
-        # Export
-        await pg.click('#a-export')
-        exp = await pg.input_value('.export-text')
-        await pg.screenshot(path=OUT + '04-export.png')
-        await pg.keyboard.press('Escape')
+        # Send to Claude: copies the export (plus instructions and saved rules) and opens claude.ai in a new tab
+        async with ctx.expect_page() as claude_tab:
+            await pg.click('#a-claude')
+        await (await claude_tab.value).close()
+        exp = await pg.evaluate('navigator.clipboard.readText()')
 
         # Reload persists
         await pg.reload()
