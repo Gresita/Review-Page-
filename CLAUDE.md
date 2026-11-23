@@ -21,6 +21,7 @@ Video review tool for END Properties (Dubai real estate). Dion (decider) and man
   - `reviews/{id}` { title, project, deadline, status, createdAt, createdBy, currentVersion }
   - `reviews/{id}/versions/v{n}` { n, url, storagePath, fileName, note, uploadedAt, uploadedBy }
   - `reviews/{id}/comments/{cid}` { version, t, x, y, text, authorEmail, authorName, authorRole, createdAt, status }
+  - `rules/{id}` { text, source, status: active | pending, createdAt, createdBy } (feedback memory, admin only). Only active rules (or rules with no status) go into "Send to Claude"; pending ones are Claude's proposals waiting for an admin's approval in the Rules panel.
   - `x`, `y` are 0–1 fractions of the video frame (not the element), `t` is seconds.
 - Run `tests/e2e_local.py` against a local server after UI changes.
 

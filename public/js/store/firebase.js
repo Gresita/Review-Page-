@@ -174,9 +174,11 @@ export const store = {
     const q = F.query(F.collection(db, 'rules'), F.orderBy('createdAt'));
     return F.onSnapshot(q, (s) => cb(s.docs.map(norm)), () => cb([]));
   },
-  async addRule(text, source) {
-    await F.addDoc(F.collection(db, 'rules'), { text, source: source || '', createdAt: F.serverTimestamp(), createdBy: member.email });
+  // status: 'active' (sent to Claude) or 'pending' (proposed, waits for an admin's approval).
+  async addRule(text, source, status = 'active') {
+    await F.addDoc(F.collection(db, 'rules'), { text, source: source || '', status, createdAt: F.serverTimestamp(), createdBy: member.email });
   },
+  async updateRule(id, patch) { await F.updateDoc(F.doc(db, 'rules', id), patch); },
   async deleteRule(id) { await F.deleteDoc(F.doc(db, 'rules', id)); },
 
   async updateReview(reviewId, patch) {

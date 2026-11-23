@@ -180,3 +180,17 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .row-menu-list [role=menuitem] { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 10px 12px; font: inherit; color: var(--ink); cursor: pointer; border-radius: 4px; }
 .row-menu-list [role=menuitem]:hover, .row-menu-list [role=menuitem]:focus-visible { background: var(--sand-soft); }
 .row-menu-list .danger { color: var(--bordeaux); }
+
+/* Feedback memory (Rules panel) */
+.rules-h { font-family: var(--label); font-weight: 400; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin: 18px 0 6px; }
+.rule-list { list-style: none; margin: 0; padding: 0; }
+.rule-item { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--sand); }
+.rule-item.is-pending { background: rgba(122, 10, 0, 0.04); padding: 10px 8px; }
+.rule-item input { flex: 1; min-width: 0; border: 1px solid var(--sand); background: var(--surface); border-radius: var(--radius); padding: 7px 9px; }
+.rule-btns { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.rule-add { display: flex; gap: 8px; margin-top: 14px; }
+.rule-add input { flex: 1; min-width: 0; border: 1px solid var(--sand); background: var(--surface); border-radius: var(--radius); padding: 8px 10px; }
+.rule-paste { margin-top: 14px; }
+.rule-paste summary { cursor: pointer; color: var(--bordeaux); }
+.rule-paste textarea { margin: 8px 0; }
+@media (max-width: 520px) { .rule-item.is-pending { flex-direction: column; align-items: stretch; } }

@@ -68,12 +68,15 @@ export function modal({ title, body, buttons }) {
     const bodyEl = el.querySelector('.modal-body');
     if (typeof body === 'string') bodyEl.innerHTML = body; else if (body) bodyEl.append(body);
     const actions = el.querySelector('.modal-actions');
+    // Escape is caught on the document, so it still works after the focused element was removed.
+    const onKey = (e) => { if (e.key === 'Escape') close(null); };
+    const close = (value) => { document.removeEventListener('keydown', onKey); el.remove(); resolve(value); };
     (buttons || []).forEach((b) => {
       const btn = h(`<button class="btn ${b.primary ? 'btn-primary' : 'btn-ghost'}" type="button">${esc(b.label)}</button>`);
-      btn.addEventListener('click', () => { if (b.keepOpen) { b.onClick?.(btn); return; } el.remove(); resolve(b.value); });
+      btn.addEventListener('click', () => { if (b.keepOpen) { b.onClick?.(btn); return; } close(b.value); });
       actions.append(btn);
     });
-    el.addEventListener('keydown', (e) => { if (e.key === 'Escape') { el.remove(); resolve(null); } });
+    document.addEventListener('keydown', onKey);
     document.body.append(el);
     (el.querySelector('input, textarea, button.btn-primary') || el.querySelector('button'))?.focus();
   });
@@ -87,4 +90,32 @@ export function toast(text) {
   const el = h(`<div class="toast" role="status">${esc(text)}</div>`);
   document.body.append(el);
   setTimeout(() => el.remove(), 3200);
+}
+
+// ── Feedback memory ──────────────────────────────────
+// Rules without a status are older ones, saved before approval existed: they count as active.
+export const isActiveRule = (r) => r.status !== 'pending';
+
+// Pull rule proposals out of Claude's answer. Takes the list under "RREGULLA TË REJA" (or the skill's
+// "Rregulla të propozuara" heading) when present, otherwise every bullet line in the pasted text.
+export function parseRuleProposals(text) {
+  const lines = String(text || '').split(/\r?\n/);
+  const start = lines.findIndex((l) => /rregulla t[ëe] (reja|propozuara)|new rules|proposed rules/i.test(l));
+  const body = start >= 0 ? lines.slice(start + 1) : lines;
+  const out = [];
+  for (const line of body) {
+    const m = line.match(/^\s*(?:[-*•]|\d+[.)])\s+(.+)$/);
+    if (!m) {
+      if (start >= 0 && out.length && /^\s*(#|\S.*:\s*$)/.test(line)) break; // next heading ends the block
+      continue;
+    }
+    const rule = m[1]
+      .replace(/\*\*/g, '')
+      .replace(/\s+[—–-]\s+(nga|from)\s+#.*$/i, '') // skill format: "rule" — nga #3 (Dion)
+      .replace(/^["“”„']+|["“”„']+$/g, '')
+      .trim();
+    if (/^(asnjë|asnje|none|…|\.\.\.)$/i.test(rule)) continue;
+    if (rule.length > 2 && !out.some((x) => x.toLowerCase() === rule.toLowerCase())) out.push(rule);
+  }
+  return out;
 }

@@ -1,6 +1,6 @@
 import { t } from '../i18n.js';
 import { config } from '../config.js';
-import { esc, fmtTime, fmtDate, fmtLeft, isClosed, can, roleLabel, h, modal, confirmBox, toast } from '../util.js';
+import { esc, fmtTime, fmtDate, fmtLeft, isClosed, can, roleLabel, h, modal, confirmBox, toast, isActiveRule } from '../util.js';
 
 const PIN_WINDOW = 0.6; // seconds around the current time in which a comment's pin is shown
 const SPEEDS = [1, 0.5, 0.25];
@@ -327,8 +327,19 @@ export function renderReview(root, { store, user, reviewId }) {
       return;
     }
     if (act === 'rule') {
-      await store.addRule(c.text, state.review.title);
-      toast(t('ruleSaved'));
+      // Let the admin turn the one-off comment into a general rule before it is saved.
+      const body = h(`<div><p class="muted">${t('ruleFromCommentIntro')}</p><textarea rows="3" maxlength="300">${esc(c.text)}</textarea></div>`);
+      const ta = body.querySelector('textarea');
+      const ok = await modal({
+        title: t('saveRule'),
+        body,
+        buttons: [{ label: t('cancel'), value: false }, { label: t('saveRule'), value: true, primary: true }],
+      });
+      const text = ta.value.trim();
+      if (ok && text) {
+        await store.addRule(text, state.review.title);
+        toast(t('ruleSaved'));
+      }
       return;
     }
     if (act === 'delete') {
@@ -449,14 +460,21 @@ export function renderReview(root, { store, user, reviewId }) {
   async function sendToClaude() {
     const { md } = buildExport();
     const v = state.versions.find((x) => x.n === state.version);
+    const rules = (state.rules || []).filter(isActiveRule);
     const prompt = [
       '/end-brochure-video',
       '',
       `Rikrijo videon "${state.review.title}" (v${state.version}) duke u bazuar në komentet e review-së më poshtë.`,
       'Zbato vetëm komentet e hapura; kur komentet bien ndesh, vendos "decider". Mos ndrysho asgjë tjetër.',
-      ...(state.rules && state.rules.length
-        ? ['', 'Rregulla të përhershme (zbatoji në çdo video):', ...state.rules.map((r) => '- ' + r.text), '']
+      ...(rules.length
+        ? ['', 'Rregulla të përhershme (zbatoji në çdo video, edhe kur komentet nuk i përmendin):', ...rules.map((r) => '- ' + r.text), '']
         : []),
+      'Në fund të përgjigjes, nëse komentet tregojnë një preferencë që vlen për çdo video, post ose reklamë END',
+      '(jo një ndryshim vetëm për këtë video), shkruaje si rregull të shkurtër në këtë format.',
+      'Mos përsërit rregullat që janë më lart. Nëse s’ka asnjë, shkruaj "- asnjë".',
+      'RREGULLA TË REJA:',
+      '- …',
+      '',
       v?.url && /^https?:/.test(v.url) ? `Videoja aktuale: ${v.url}` : 'Videoja aktuale: bashkangjite ti në chat.',
       '',
       md,

@@ -179,11 +179,16 @@ export const store = {
   watchRules(cb) {
     return subscribe(() => cb(Object.values(data.rules || {}).sort((a, b) => a.createdAt - b.createdAt)));
   },
-  async addRule(text, source) {
+  // status: 'active' (sent to Claude) or 'pending' (proposed, waits for an admin's approval).
+  async addRule(text, source, status = 'active') {
     const u = currentUser();
     data.rules = data.rules || {};
     const id = newId();
-    data.rules[id] = { id, text, source: source || '', createdAt: Date.now(), createdBy: u?.email || '' };
+    data.rules[id] = { id, text, source: source || '', status, createdAt: Date.now(), createdBy: u?.email || '' };
+    persist();
+  },
+  async updateRule(id, patch) {
+    if (data.rules?.[id]) Object.assign(data.rules[id], patch);
     persist();
   },
   async deleteRule(id) {

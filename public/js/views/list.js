@@ -1,6 +1,6 @@
 import { t } from '../i18n.js';
 import { config } from '../config.js';
-import { esc, fmtDate, fmtLeft, isClosed, can, h, toast, defaultDeadline, toLocalInput, modal, confirmBox } from '../util.js';
+import { esc, fmtDate, fmtLeft, isClosed, can, h, toast, defaultDeadline, toLocalInput, modal, confirmBox, isActiveRule, parseRuleProposals } from '../util.js';
 
 export function renderList(root, { store, user }) {
   root.innerHTML = `
@@ -82,27 +82,103 @@ export function renderList(root, { store, user }) {
 
   root.querySelector('#new-review')?.addEventListener('click', () => openCreate(store));
   root.querySelector('#open-rules')?.addEventListener('click', () => openRules(store));
+  // Show how many proposed rules wait for approval on the Rules button.
+  const rulesBtn = root.querySelector('#open-rules');
+  const unsubRules = rulesBtn
+    ? store.watchRules((rs) => {
+      const n = rs.filter((r) => !isActiveRule(r)).length;
+      rulesBtn.textContent = n ? `${t('rules')} · ${t('rulesPendingCount', { n })}` : t('rules');
+    })
+    : null;
   return () => {
     unsub();
+    unsubRules?.();
     document.removeEventListener('click', onDocClick);
     document.removeEventListener('keydown', onDocKey);
   };
 }
 
+// Feedback memory: rules Claude proposed wait here for approval; approved rules go with every request to Claude.
 async function openRules(store) {
   let current = [];
-  const body = h(`<div><p class="muted">${t('rulesIntro')}</p><ul class="rule-list" style="list-style:none;margin:0;padding:0"></ul></div>`);
-  const ul = body.querySelector('ul');
+  const body = h(`<div class="rules">
+    <p class="muted">${t('rulesIntro')}</p>
+    <section class="rules-pending" hidden>
+      <h3 class="rules-h">${t('rulesPending')}</h3>
+      <ul class="rule-list" data-list="pending"></ul>
+    </section>
+    <section>
+      <h3 class="rules-h">${t('rulesActive')}</h3>
+      <ul class="rule-list" data-list="active"></ul>
+    </section>
+    <form class="rule-add" data-form="add">
+      <input type="text" maxlength="300" placeholder="${esc(t('rulePlaceholder'))}" aria-label="${esc(t('ruleAdd'))}">
+      <button class="btn btn-ghost btn-sm" type="submit">${t('ruleAdd')}</button>
+    </form>
+    <details class="rule-paste">
+      <summary>${t('rulesPasteTitle')}</summary>
+      <p class="muted">${t('rulesPasteIntro')}</p>
+      <textarea rows="5" aria-label="${esc(t('rulesPasteTitle'))}"></textarea>
+      <button class="btn btn-ghost btn-sm" type="button" data-act="paste">${t('rulesPasteBtn')}</button>
+    </details>
+  </div>`);
+  const pendingSec = body.querySelector('.rules-pending');
+  const pendingUl = body.querySelector('[data-list="pending"]');
+  const activeUl = body.querySelector('[data-list="active"]');
+  const src = (r) => (r.source ? ` <span class="muted">· ${esc(r.source)}</span>` : '');
+
   const unsub = store.watchRules((rules) => {
     current = rules;
-    ul.innerHTML = rules.length
-      ? rules.map((r) => `<li style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--sand)"><span>${esc(r.text)}${r.source ? ` <span class="muted">· ${esc(r.source)}</span>` : ''}</span><button type="button" class="link-btn danger" data-id="${esc(r.id)}">${t('delete')}</button></li>`).join('')
+    const pending = rules.filter((r) => !isActiveRule(r));
+    const active = rules.filter(isActiveRule);
+    pendingSec.hidden = !pending.length;
+    pendingUl.innerHTML = pending.map((r) => `<li class="rule-item is-pending" data-id="${esc(r.id)}">
+        <input type="text" maxlength="300" value="${esc(r.text)}" aria-label="${esc(t('ruleEdit'))}">
+        <span class="rule-btns">
+          <button type="button" class="btn btn-primary btn-sm" data-act="approve">${t('ruleApprove')}</button>
+          <button type="button" class="link-btn danger" data-act="reject">${t('ruleReject')}</button>
+        </span>
+      </li>`).join('');
+    activeUl.innerHTML = active.length
+      ? active.map((r) => `<li class="rule-item" data-id="${esc(r.id)}"><span>${esc(r.text)}${src(r)}</span><button type="button" class="link-btn danger" data-act="delete">${t('delete')}</button></li>`).join('')
       : `<li class="empty">${t('noRules')}</li>`;
   });
-  ul.addEventListener('click', (e) => {
-    const id = e.target.closest('[data-id]')?.dataset.id;
-    if (id) store.deleteRule(id);
+
+  body.addEventListener('click', async (e) => {
+    const act = e.target.closest('[data-act]')?.dataset.act;
+    if (!act) return;
+    if (act === 'paste') {
+      const ta = body.querySelector('.rule-paste textarea');
+      const known = new Set(current.map((r) => r.text.trim().toLowerCase()));
+      const found = parseRuleProposals(ta.value).filter((x) => !known.has(x.toLowerCase()));
+      if (!found.length) { toast(t('rulesPasteNone')); return; }
+      for (const text of found) await store.addRule(text, 'Claude', 'pending');
+      ta.value = '';
+      body.querySelector('.rule-paste').open = false;
+      toast(t('rulesPasteAdded', { n: found.length }));
+      return;
+    }
+    const li = e.target.closest('[data-id]');
+    if (!li) return;
+    const id = li.dataset.id;
+    if (act === 'approve') {
+      const text = li.querySelector('input').value.trim();
+      if (text) await store.updateRule(id, { text, status: 'active' });
+    } else if (act === 'reject' || act === 'delete') {
+      await store.deleteRule(id);
+    }
   });
+
+  body.querySelector('[data-form="add"]').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = e.target.querySelector('input');
+    const text = input.value.trim();
+    if (!text) return;
+    await store.addRule(text, '');
+    input.value = '';
+    toast(t('ruleSaved'));
+  });
+
   await modal({
     title: t('rulesTitle'),
     body,
@@ -110,7 +186,7 @@ async function openRules(store) {
       {
         label: t('copyRules'), keepOpen: true,
         onClick: async () => {
-          const text = [t('rulesHeader'), ...current.map((r) => '- ' + r.text)].join(String.fromCharCode(10));
+          const text = [t('rulesHeader'), ...current.filter(isActiveRule).map((r) => '- ' + r.text)].join(String.fromCharCode(10));
           try { await navigator.clipboard.writeText(text); toast(t('rulesCopied')); } catch { toast(text); }
         },
       },
