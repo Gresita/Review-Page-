@@ -102,7 +102,6 @@ export function renderReview(root, { store, user, reviewId }) {
           ? `<button class="btn btn-ghost" id="a-reopen" type="button">${t('reopen')}</button>`
           : `<button class="btn btn-ghost" id="a-close" type="button">${t('closeReview')}</button>`) : ''}
         ${can.upload(user) ? `<button class="btn btn-ghost" id="a-link" type="button">${t('copyLink')}</button>` : ''}
-        ${can.upload(user) ? `<button class="btn btn-ghost" id="a-download" type="button">${t('downloadVideo')}</button>` : ''}
         ${can.close(user) || can.upload(user) ? `<button class="btn btn-primary" id="a-claude" type="button">${t('sendClaude')}</button>` : ''}
       </div>`;
     $('#ver').addEventListener('change', (e) => { state.version = Number(e.target.value); state.draft = null; loadVideo(); renderAll(); });
@@ -119,14 +118,6 @@ export function renderReview(root, { store, user, reviewId }) {
       await store.updateReview(r.id, patch);
     });
     $('#a-claude')?.addEventListener('click', sendToClaude);
-    $('#a-download')?.addEventListener('click', async () => {
-      const v = state.versions.find((x) => x.n === state.version);
-      const url = v ? await store.videoUrl(v) : null;
-      if (!url) return;
-      const a = document.createElement('a');
-      a.href = url; a.download = v.fileName || 'video.mp4'; a.target = '_blank'; a.rel = 'noopener';
-      document.body.append(a); a.click(); a.remove();
-    });
     $('#a-link')?.addEventListener('click', async () => {
       try { await navigator.clipboard.writeText(location.href); toast(t('linkCopied')); } catch { toast(location.href); }
     });
