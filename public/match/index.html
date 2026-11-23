@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Match · END Properties</title>
+  <meta name="theme-color" content="#FEFFF8">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&family=Lato:wght@300;400;700&family=Montserrat:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/match/styles.css">
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/" data-i18n-title="backToReview">
+      <img src="/assets/logo.png" alt="END Properties" class="brand-logo" width="96" height="28">
+      <h1 data-i18n="title"></h1>
+    </a>
+    <div class="top-right">
+      <a class="back" href="/" data-i18n="backToReview"></a>
+      <span id="userBox" class="user" hidden>
+        <span id="userEmail" class="muted"></span>
+      </span>
+    </div>
+  </header>
+
+  <section id="signin" class="card signin" hidden>
+    <h2 class="h2" data-i18n="signInTitle"></h2>
+    <button type="button" id="googleBtn" class="primary" data-i18n="signInGoogle"></button>
+    <form id="emailForm">
+      <label for="email" data-i18n="email"></label>
+      <input id="email" type="email" autocomplete="username" required>
+      <label for="password" data-i18n="password"></label>
+      <input id="password" type="password" autocomplete="current-password" required>
+      <button type="submit" data-i18n="signIn"></button>
+    </form>
+    <p id="signinError" class="error" role="alert"></p>
+  </section>
+
+  <div class="layout" hidden>
+    <main>
+
+      <form id="clientForm" class="card" autocomplete="off">
+        <h2 class="h2" data-i18n="formTitle"></h2>
+        <div class="grid" id="fields"></div>
+        <div class="row">
+          <button type="submit" class="primary" data-i18n="search"></button>
+          <button type="button" id="clearBtn" data-i18n="clear"></button>
+        </div>
+      </form>
+
+      <section id="results" aria-live="polite"></section>
+    </main>
+
+    <aside>
+      <details id="questionsPanel" class="card" open>
+        <summary class="h2" data-i18n="questionsTitle"></summary>
+        <h3 class="h3" data-i18n="keyQuestions"></h3>
+        <ol id="keyList" class="qlist"></ol>
+        <h3 class="h3" data-i18n="supportQuestions"></h3>
+        <ol id="supportList" class="qlist" start="9"></ol>
+      </details>
+    </aside>
+  </div>
+
+  <script type="module" src="/match/app.js"></script>
+</body>
+</html>

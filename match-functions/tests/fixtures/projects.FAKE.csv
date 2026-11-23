@@ -1,0 +1,12 @@
+# FAKE TEST DATA - not real projects. Used only by tests. Never import into Firestore.
+id,name,developer,area,propertyTypes,bedrooms,priceFromAED,status,handover,postHandoverYears,minDownPaymentPct,nearSea,tags,rentalYield,goldenVisaEligible
+S01,Sample Marina Heights,Palmera Developments,Dubai Marina,apartment,1|2|3,1650000,ready,ready,0,,true,beach|metro|gym,6.8,true
+S02,Sample Creek Views,Creekline,Dubai Creek Harbour,apartment,1|2,1200000,offplan,2027-Q4,2,10,false,metro|park,7.4,true
+S03,Sample Golf Villas,Desert Rose Homes,Dubai Hills,villa|townhouse,3|4|5,4200000,offplan,2028-Q2,0,20,false,golf|schools|park,5.1,true
+S04,Sample JVC Studios,Creekline,JVC,apartment,0|1,620000,offplan,2026-Q4,3,10,false,gym|pool,8.6,
+S05,Sample Palm Residences,Palmera Developments,Palm Jumeirah,apartment|villa,2|3|4,5900000,ready,ready,0,,true,beach|lifestyle,4.9,true
+S06,Sample Townhouses South,Desert Rose Homes,Dubai South,townhouse,3|4,1850000,offplan,2028-Q1,5,10,false,schools|park,6.2,false
+S07,Sample Business Bay Lofts,Skyline Estates,Business Bay,apartment,1|2,1450000,offplan,2027-Q2,1,20,false,metro|canal,7.0,true
+S08,Sample Island Beach Homes,Skyline Estates,Dubai Islands,apartment|townhouse,1|2|3|4,2100000,offplan,2028-Q3,2,30,true,beach|lifestyle,6.5,
+S09,Sample Arjan Gardens,Creekline,Arjan,apartment,1|2,850000,ready,ready,0,,false,schools|pool,7.9,false
+S10,Sample Dubailand Villas,Desert Rose Homes,Dubailand,villa|townhouse,4|5,3100000,offplan,2027-Q3,3,20,false,golf|schools,5.6,true

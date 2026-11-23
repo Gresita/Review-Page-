@@ -21,6 +21,7 @@ function renderHeader() {
     <div class="header-right">
       ${backend === 'local' ? '<span class="chip chip-demo">DEMO</span>' : ''}
       ${user?.role && !user.anon ? `<span class="who">${esc(user.name)} <span class="role">${esc(roleLabel(user.role))}</span></span>` : ''}
+      ${user && !user.anon && backend !== 'local' ? `<a class="btn btn-ghost btn-sm" href="match/">${t('matchLink')}</a>` : ''}
       <button class="btn btn-ghost btn-sm" id="lang" type="button">${t('lang')}</button>
       ${user ? `<button class="btn btn-ghost btn-sm" id="signout" type="button">${t('signOut')}</button>` : ''}
     </div>`;

@@ -24,5 +24,14 @@ Video review tool for END Properties (Dubai real estate). Dion (decider) and man
   - `x`, `y` are 0–1 fractions of the video frame (not the element), `t` is seconds.
 - Run `tests/e2e_local.py` against a local server after UI changes.
 
+## Match (project search) lives alongside, not inside, the Review Page
+- Page: `public/match/` (own HTML, CSS, JS). Server: `match-functions/` (Cloud Function `matchApi`, codebase `match`, Pixxi + Firestore `match_projects`). Details in `match-functions/README.md`.
+- The only shared points, keep them this way:
+  - `public/js/config.js` is read by `public/match/auth.js` (Firebase config only). Match never writes Review Page data, storage keys or collections.
+  - Same Firebase Auth. Match has no sign-out button, because signing out there would sign the user out of the Review Page too.
+  - Review Page header shows the "Project match" link (`app.js` `renderHeader`, string `matchLink`), only for signed-in staff in firebase mode.
+  - `firebase.json`: the `/api/**` → `matchApi` rewrite must stay before the `**` → `/index.html` rewrite; hosting `predeploy` regenerates `public/match/shared/fields.js`.
+- Review Page changes never need a functions deploy. Match server changes: `firebase deploy --only functions:match` (needs `npm install` in `match-functions` first).
+
 ## Skills in this repo
 - `/review-consolidate` — turns an "Export for AI" text/JSON into one decided change list, flags conflicts (decider wins), and proposes reusable feedback rules.

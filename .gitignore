@@ -18,3 +18,7 @@ Thumbs.db
 
 # Local test output
 tests/out/
+
+# Match functions
+match-functions/node_modules/
+.secret.local
