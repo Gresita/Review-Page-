@@ -1,13 +1,13 @@
 import { t } from '../i18n.js';
 import { config } from '../config.js';
-import { esc, fmtDate, fmtLeft, isClosed, can, h, toast, defaultDeadline, toLocalInput } from '../util.js';
+import { esc, fmtDate, fmtLeft, isClosed, can, h, toast, defaultDeadline, toLocalInput, modal } from '../util.js';
 
 export function renderList(root, { store, user }) {
   root.innerHTML = `
     <section class="list-view">
       <div class="list-head">
         <h1 class="page-title">${t('reviews')}</h1>
-        ${can.upload(user) ? `<button class="btn btn-primary" id="new-review" type="button">${t('newReview')}</button>` : ''}
+        ${can.upload(user) ? `<span class="head-actions"><button class="btn btn-ghost" id="open-rules" type="button">${t('rules')}</button><button class="btn btn-primary" id="new-review" type="button">${t('newReview')}</button></span>` : ''}
       </div>
       <div class="review-rows" id="rows" aria-live="polite"></div>
     </section>`;
@@ -32,7 +32,39 @@ export function renderList(root, { store, user }) {
   });
 
   root.querySelector('#new-review')?.addEventListener('click', () => openCreate(store));
+  root.querySelector('#open-rules')?.addEventListener('click', () => openRules(store));
   return () => unsub();
+}
+
+async function openRules(store) {
+  let current = [];
+  const body = h(`<div><p class="muted">${t('rulesIntro')}</p><ul class="rule-list" style="list-style:none;margin:0;padding:0"></ul></div>`);
+  const ul = body.querySelector('ul');
+  const unsub = store.watchRules((rules) => {
+    current = rules;
+    ul.innerHTML = rules.length
+      ? rules.map((r) => `<li style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--sand)"><span>${esc(r.text)}${r.source ? ` <span class="muted">· ${esc(r.source)}</span>` : ''}</span><button type="button" class="link-btn danger" data-id="${esc(r.id)}">${t('delete')}</button></li>`).join('')
+      : `<li class="empty">${t('noRules')}</li>`;
+  });
+  ul.addEventListener('click', (e) => {
+    const id = e.target.closest('[data-id]')?.dataset.id;
+    if (id) store.deleteRule(id);
+  });
+  await modal({
+    title: t('rulesTitle'),
+    body,
+    buttons: [
+      {
+        label: t('copyRules'), keepOpen: true,
+        onClick: async () => {
+          const text = [t('rulesHeader'), ...current.map((r) => '- ' + r.text)].join(String.fromCharCode(10));
+          try { await navigator.clipboard.writeText(text); toast(t('rulesCopied')); } catch { toast(text); }
+        },
+      },
+      { label: t('closeModal'), value: null, primary: true },
+    ],
+  });
+  unsub();
 }
 
 function openCreate(store) {

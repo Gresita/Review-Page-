@@ -11,7 +11,16 @@ service cloud.firestore {
     function isMember() { return signedIn() && exists(memberPath()); }
     function myRole() { return get(memberPath()).data.role; }
     function isAdmin() { return isMember() && myRole() == 'admin'; }
+    // Link-only guests sign in anonymously (no email). They can open a review by its id and comment while it is open.
+    function isAnon() { return request.auth != null && request.auth.token.firebase.sign_in_provider == 'anonymous'; }
+    function guestId() { return 'anon:' + request.auth.uid; }
+    function canView() { return isMember() || isAnon(); }
     function canDecide() { return isMember() && myRole() in ['admin', 'decider']; }
+
+    // Permanent feedback rules ("keep for future videos"). Admin only.
+    match /rules/{ruleId} {
+      allow read, write: if isAdmin();
+    }
 
     match /members/{email} {
       allow read: if signedIn() && (email == myEmail() || isAdmin());
@@ -22,7 +31,8 @@ service cloud.firestore {
       function review() { return get(/databases/$(database)/documents/reviews/$(reviewId)).data; }
       function isOpen() { return review().status == 'open' && request.time < review().deadline; }
 
-      allow read: if isMember();
+      allow get: if canView();
+      allow list: if isMember();
       allow create: if isAdmin();
       allow delete: if isAdmin();
       // Admin can change anything; the decider can only open/close (and move the deadline when reopening).
@@ -30,15 +40,16 @@ service cloud.firestore {
         || (canDecide() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'deadline']));
 
       match /versions/{versionId} {
-        allow read: if isMember();
+        allow read: if canView();
         allow write: if isAdmin();
       }
 
       match /comments/{commentId} {
-        allow read: if isMember();
+        allow read: if canView();
 
-        allow create: if isMember() && isOpen()
-          && request.resource.data.authorEmail == myEmail()
+        allow create: if isOpen()
+          && ((isMember() && request.resource.data.authorEmail == myEmail())
+              || (isAnon() && request.resource.data.authorEmail == guestId() && request.resource.data.authorRole == 'reviewer'))
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
           && request.resource.data.text.size() <= 2000
@@ -46,11 +57,11 @@ service cloud.firestore {
 
         // Admin/decider can resolve or reopen any comment; authors can edit their own text while the review is open.
         allow update: if canDecide()
-          || (isMember() && isOpen() && resource.data.authorEmail == myEmail()
+          || (isOpen() && ((isMember() && resource.data.authorEmail == myEmail()) || (isAnon() && resource.data.authorEmail == guestId()))
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text']));
 
         allow delete: if isAdmin()
-          || (isMember() && isOpen() && resource.data.authorEmail == myEmail());
+          || (isOpen() && ((isMember() && resource.data.authorEmail == myEmail()) || (isAnon() && resource.data.authorEmail == guestId())));
       }
     }
   }

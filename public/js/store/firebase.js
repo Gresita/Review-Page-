@@ -41,6 +41,13 @@ export const store = {
   onAuth(cb) {
     return A.onAuthStateChanged(auth, async (u) => {
       if (!u) { member = null; cb(null); return; }
+      if (u.isAnonymous) {
+        let nm = '';
+        try { nm = localStorage.getItem('rp:guestName') || ''; } catch { /* ignore */ }
+        member = { email: 'anon:' + u.uid, name: nm || 'Anonim', role: 'reviewer', anon: true };
+        cb(member);
+        return;
+      }
       const email = (u.email || '').toLowerCase();
       try {
         const snap = await F.getDoc(F.doc(db, 'members', email));
@@ -67,7 +74,26 @@ export const store = {
     await A.signInWithEmailAndPassword(auth, email, password);
   },
 
+  // Link-only guests: no account, optional display name. Needs the Anonymous provider enabled.
+  async signInGuest(name) {
+    try { localStorage.setItem('rp:guestName', name || ''); } catch { /* ignore */ }
+    await A.signInAnonymously(auth);
+  },
+
   async signOut() { await A.signOut(auth); },
+
+  // Removes the review, its comments, version docs and the video files (frees Storage).
+  async deleteReview(reviewId) {
+    const versions = await F.getDocs(F.collection(db, 'reviews', reviewId, 'versions'));
+    for (const v of versions.docs) {
+      const p = v.data().storagePath;
+      if (p) { try { await S.deleteObject(S.ref(storage, p)); } catch { /* already gone */ } }
+    }
+    const comments = await F.getDocs(F.collection(db, 'reviews', reviewId, 'comments'));
+    await Promise.all(comments.docs.map((d) => F.deleteDoc(d.ref)));
+    await Promise.all(versions.docs.map((d) => F.deleteDoc(d.ref)));
+    await F.deleteDoc(F.doc(db, 'reviews', reviewId));
+  },
 
   watchReviews(cb) {
     const q = F.query(F.collection(db, 'reviews'), F.orderBy('createdAt', 'desc'));
@@ -135,6 +161,16 @@ export const store = {
   async deleteComment(reviewId, commentId) {
     await F.deleteDoc(F.doc(db, 'reviews', reviewId, 'comments', commentId));
   },
+
+  // Permanent feedback rules, kept after a review is deleted. Admin only (see firestore.rules).
+  watchRules(cb) {
+    const q = F.query(F.collection(db, 'rules'), F.orderBy('createdAt'));
+    return F.onSnapshot(q, (s) => cb(s.docs.map(norm)), () => cb([]));
+  },
+  async addRule(text, source) {
+    await F.addDoc(F.collection(db, 'rules'), { text, source: source || '', createdAt: F.serverTimestamp(), createdBy: member.email });
+  },
+  async deleteRule(id) { await F.deleteDoc(F.doc(db, 'rules', id)); },
 
   async updateReview(reviewId, patch) {
     const p = { ...patch };

@@ -9,12 +9,15 @@ service firebase.storage {
     function isMember() {
       return request.auth != null && request.auth.token.email != null && firestore.exists(memberPath());
     }
+    function isAnon() {
+      return request.auth != null && request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
     function isAdmin() {
       return isMember() && firestore.get(memberPath()).data.role == 'admin';
     }
 
     match /reviews/{reviewId}/{fileName} {
-      allow read: if isMember();
+      allow read: if isMember() || isAnon();
       // 2 GB max, video files only (keep in sync with maxUploadMb in public/js/config.js)
       allow create, update: if isAdmin()
         && request.resource.size < 2048 * 1024 * 1024

@@ -10,6 +10,7 @@ const main = document.getElementById('app-main');
 let store;
 let user = null;
 let cleanup = null;
+let guestDismissed = false;
 
 function renderHeader() {
   header.innerHTML = `
@@ -19,7 +20,7 @@ function renderHeader() {
     </a>
     <div class="header-right">
       ${backend === 'local' ? '<span class="chip chip-demo">DEMO</span>' : ''}
-      ${user?.role ? `<span class="who">${esc(user.name)} <span class="role">${esc(roleLabel(user.role))}</span></span>` : ''}
+      ${user?.role && !user.anon ? `<span class="who">${esc(user.name)} <span class="role">${esc(roleLabel(user.role))}</span></span>` : ''}
       <button class="btn btn-ghost btn-sm" id="lang" type="button">${t('lang')}</button>
       ${user ? `<button class="btn btn-ghost btn-sm" id="signout" type="button">${t('signOut')}</button>` : ''}
     </div>`;
@@ -56,12 +57,47 @@ function renderSignIn() {
   });
 }
 
+function renderGuest() {
+  main.innerHTML = `<section class="signin">
+    <h1 class="page-title">${t('guestTitle')}</h1>
+    <p class="muted">${t('guestIntro')}</p>
+    <form id="guest" class="signin-form" novalidate>
+      <div class="field"><label for="guest-name">${t('guestName')}</label><input id="guest-name" maxlength="60" autocomplete="name"></div>
+      <button class="btn btn-primary" type="submit">${t('guestOpen')}</button>
+      <p class="form-error" role="alert"></p>
+    </form>
+    <p><button class="link-btn" id="staff" type="button">${t('staffSignIn')}</button></p>
+  </section>`;
+  main.querySelector('#guest').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try { await store.signInGuest(main.querySelector('#guest-name').value.trim()); } catch (ex) {
+      main.querySelector('.form-error').textContent = t('errGeneric', { msg: ex.code || ex.message });
+    }
+  });
+  main.querySelector('#staff').addEventListener('click', () => { guestDismissed = true; route(); });
+}
+
+// Public root: no login form. Guests arrive through a review link; the team uses the small link below.
+function renderLanding() {
+  main.innerHTML = `<section class="signin">
+    <p class="muted">${t('guestNeedLink')}</p>
+    <p><button class="link-btn" id="staff" type="button">${t('staffSignIn')}</button></p>
+  </section>`;
+  main.querySelector('#staff').addEventListener('click', () => { guestDismissed = true; route(); });
+}
+
 function route() {
   renderHeader();
   if (cleanup) { cleanup(); cleanup = null; }
-  if (!user) { renderSignIn(); return; }
-  if (!user.role) { main.innerHTML = `<section class="signin"><p>${t('noAccess')}</p><p class="muted">${esc(user.email)}</p></section>`; return; }
   const m = location.hash.match(/^#\/review\/(.+)$/);
+  if (!user) {
+    if (m && !guestDismissed) renderGuest();
+    else if (backend !== 'local' && !guestDismissed) renderLanding();
+    else renderSignIn();
+    return;
+  }
+  if (user.anon && !m) { main.innerHTML = `<section class="signin"><p>${t('guestNeedLink')}</p></section>`; return; }
+  if (!user.role) { main.innerHTML = `<section class="signin"><p>${t('noAccess')}</p><p class="muted">${esc(user.email)}</p></section>`; return; }
   cleanup = m
     ? renderReview(main, { store, user, reviewId: decodeURIComponent(m[1]) })
     : renderList(main, { store, user });

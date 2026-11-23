@@ -101,7 +101,11 @@ export function renderReview(root, { store, user, reviewId }) {
         ${can.close(user) ? (r.status === 'closed'
           ? `<button class="btn btn-ghost" id="a-reopen" type="button">${t('reopen')}</button>`
           : `<button class="btn btn-ghost" id="a-close" type="button">${t('closeReview')}</button>`) : ''}
-        ${can.close(user) || can.upload(user) ? `<button class="btn btn-primary" id="a-export" type="button">${t('exportAi')}</button>` : ''}
+        ${can.close(user) || can.upload(user) ? `<button class="btn btn-ghost" id="a-export" type="button">${t('exportAi')}</button>` : ''}
+        ${can.upload(user) ? `<button class="btn btn-ghost" id="a-link" type="button">${t('copyLink')}</button>` : ''}
+        ${can.upload(user) ? `<button class="btn btn-ghost" id="a-download" type="button">${t('downloadVideo')}</button>` : ''}
+        ${can.close(user) || can.upload(user) ? `<button class="btn btn-primary" id="a-claude" type="button">${t('sendClaude')}</button>` : ''}
+        ${can.upload(user) ? `<button class="btn btn-ghost" id="a-delete" type="button">${t('approveDelete')}</button>` : ''}
       </div>`;
     $('#ver').addEventListener('change', (e) => { state.version = Number(e.target.value); state.draft = null; loadVideo(); renderAll(); });
     $('#a-version')?.addEventListener('click', uploadVersion);
@@ -117,6 +121,23 @@ export function renderReview(root, { store, user, reviewId }) {
       await store.updateReview(r.id, patch);
     });
     $('#a-export')?.addEventListener('click', openExport);
+    $('#a-claude')?.addEventListener('click', sendToClaude);
+    $('#a-download')?.addEventListener('click', async () => {
+      const v = state.versions.find((x) => x.n === state.version);
+      const url = v ? await store.videoUrl(v) : null;
+      if (!url) return;
+      const a = document.createElement('a');
+      a.href = url; a.download = v.fileName || 'video.mp4'; a.target = '_blank'; a.rel = 'noopener';
+      document.body.append(a); a.click(); a.remove();
+    });
+    $('#a-link')?.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(location.href); toast(t('linkCopied')); } catch { toast(location.href); }
+    });
+    $('#a-delete')?.addEventListener('click', async () => {
+      if (!(await confirmBox(t('confirmDeleteReview')))) return;
+      await store.deleteReview(r.id);
+      location.hash = '#/';
+    });
   }
 
   // ── Video ────────────────────────────────────────────
@@ -304,6 +325,7 @@ export function renderReview(root, { store, user, reviewId }) {
         </div>
         <p class="comment-text">${esc(c.text)}</p>
         <div class="comment-actions">
+          ${can.upload(user) ? `<button type="button" class="link-btn" data-act="rule">${t('saveRule')}</button>` : ''}
           ${can.resolve(user) ? `<button type="button" class="link-btn" data-act="resolve">${c.status === 'resolved' ? t('unresolve') : t('resolve')}</button>` : ''}
           ${can.deleteComment(user, c) && (!isC || user?.role === 'admin') ? `<button type="button" class="link-btn danger" data-act="delete">${t('delete')}</button>` : ''}
         </div>
@@ -319,6 +341,11 @@ export function renderReview(root, { store, user, reviewId }) {
     const c = state.comments.find((x) => x.id === id);
     if (act === 'resolve') {
       await store.updateComment(state.review.id, id, { status: c.status === 'resolved' ? 'open' : 'resolved' });
+      return;
+    }
+    if (act === 'rule') {
+      await store.addRule(c.text, state.review.title);
+      toast(t('ruleSaved'));
       return;
     }
     if (act === 'delete') {
@@ -433,6 +460,27 @@ export function renderReview(root, { store, user, reviewId }) {
     });
   }
 
+  // ── Send to Claude (/end-brochure-video) ─────────────
+  async function sendToClaude() {
+    const { md } = buildExport();
+    const v = state.versions.find((x) => x.n === state.version);
+    const prompt = [
+      '/end-brochure-video',
+      '',
+      `Rikrijo videon "${state.review.title}" (v${state.version}) duke u bazuar në komentet e review-së më poshtë.`,
+      'Zbato vetëm komentet e hapura; kur komentet bien ndesh, vendos "decider". Mos ndrysho asgjë tjetër.',
+      ...(state.rules && state.rules.length
+        ? ['', 'Rregulla të përhershme (zbatoji në çdo video):', ...state.rules.map((r) => '- ' + r.text), '']
+        : []),
+      v?.url && /^https?:/.test(v.url) ? `Videoja aktuale: ${v.url}` : 'Videoja aktuale: bashkangjite ti në chat.',
+      '',
+      md,
+    ].join('\n');
+    try { await navigator.clipboard.writeText(prompt); } catch { await openExport(); return; }
+    toast(t('sentClaude'));
+    window.open('https://claude.ai/new', '_blank', 'noopener');
+  }
+
   // ── Data subscriptions ───────────────────────────────
   const unsubs = [
     store.watchReview(reviewId, (r) => {
@@ -447,6 +495,7 @@ export function renderReview(root, { store, user, reviewId }) {
       if (state.review && vs.length && !vs.some((v) => v.n === state.version)) state.version = vs[vs.length - 1].n;
       loadVideo(); if (state.review) renderHead();
     }),
+    can.upload(user) ? store.watchRules((rs) => { state.rules = rs; }) : null,
     store.watchComments(reviewId, (cs) => {
       state.comments = cs;
       if (state.review) { renderList(); renderTimeline(); renderPins(); }

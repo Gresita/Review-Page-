@@ -78,6 +78,19 @@ export const store = {
 
   async signInWithGoogle() { throw new Error('Google sign-in works only in firebase mode'); },
 
+  async signInGuest(name) {
+    const m = { email: 'anon:' + newId(), name: name || 'Anonim', role: 'reviewer', anon: true };
+    localStorage.setItem(USER_KEY, JSON.stringify(m));
+    authCb?.(m);
+  },
+
+  async deleteReview(reviewId) {
+    for (const [id, v] of Object.entries(data.versions)) if (v.reviewId === reviewId) delete data.versions[id];
+    for (const [id, c] of Object.entries(data.comments)) if (c.reviewId === reviewId) delete data.comments[id];
+    delete data.reviews[reviewId];
+    persist();
+  },
+
   async signOut() {
     localStorage.removeItem(USER_KEY);
     authCb?.(null);
@@ -152,6 +165,21 @@ export const store = {
 
   async deleteComment(reviewId, commentId) {
     delete data.comments[commentId];
+    persist();
+  },
+
+  watchRules(cb) {
+    return subscribe(() => cb(Object.values(data.rules || {}).sort((a, b) => a.createdAt - b.createdAt)));
+  },
+  async addRule(text, source) {
+    const u = currentUser();
+    data.rules = data.rules || {};
+    const id = newId();
+    data.rules[id] = { id, text, source: source || '', createdAt: Date.now(), createdBy: u?.email || '' };
+    persist();
+  },
+  async deleteRule(id) {
+    if (data.rules) delete data.rules[id];
     persist();
   },
 
