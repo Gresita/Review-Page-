@@ -15,7 +15,7 @@ let guestDismissed = false;
 function renderHeader() {
   header.innerHTML = `
     <a class="brand" href="#/" aria-label="${esc(t('appName'))}">
-      <img src="assets/logo.png" alt="END Properties" class="brand-logo" width="96" height="28">
+      <img src="assets/logo.png" alt="END Properties" class="brand-logo" width="105" height="32">
       <span class="brand-name">${t('appName')}</span>
     </a>
     <div class="header-right">
