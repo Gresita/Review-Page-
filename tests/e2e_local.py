@@ -113,11 +113,27 @@ async def main():
         await pg.wait_for_timeout(300)
         en_title = await pg.text_content('.comments-head h2')
 
+        # Delete from the list's three-dot menu (admin only), with confirmation
+        await pg.set_viewport_size({'width': 1360, 'height': 900})
+        await pg.click('#signout')
+        if await pg.locator('#staff').count():
+            await pg.click('#staff')
+        await pg.click('.demo-user[data-email="admin@end.local"]')
+        await pg.goto(BASE + '#/')
+        await pg.wait_for_selector('.review-item')
+        rows_before = await pg.locator('.review-item').count()
+        await pg.click('.review-item >> nth=0 >> .row-menu-btn')
+        await pg.click('.review-item >> nth=0 >> [data-delete]')
+        await pg.click('.modal .btn-primary')
+        await pg.wait_for_function(f"document.querySelectorAll('.review-item').length === {rows_before - 1}")
+        rows_after = await pg.locator('.review-item').count()
+
         print('composer label:', label)
         print('seek after click comment:', round(t, 2), 'pins:', pins, 'markers:', markers)
         print('positions in export should be ~40/25, ~80/10, ~50/60');print('closed hint:', closed_hint, '| composer hidden when closed:', composer_hidden)
         print('persisted comments after reload:', persisted)
         print('lang toggle ->', en_title)
+        print('rows before/after delete:', rows_before, rows_after)
         print('--- export ---\n' + exp)
         print('--- errors ---\n' + '\n'.join(errors) if errors else '--- no errors ---')
         await b.close()

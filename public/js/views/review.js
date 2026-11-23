@@ -104,7 +104,6 @@ export function renderReview(root, { store, user, reviewId }) {
         ${can.upload(user) ? `<button class="btn btn-ghost" id="a-link" type="button">${t('copyLink')}</button>` : ''}
         ${can.upload(user) ? `<button class="btn btn-ghost" id="a-download" type="button">${t('downloadVideo')}</button>` : ''}
         ${can.close(user) || can.upload(user) ? `<button class="btn btn-primary" id="a-claude" type="button">${t('sendClaude')}</button>` : ''}
-        ${can.upload(user) ? `<button class="btn btn-ghost" id="a-delete" type="button">${t('approveDelete')}</button>` : ''}
       </div>`;
     $('#ver').addEventListener('change', (e) => { state.version = Number(e.target.value); state.draft = null; loadVideo(); renderAll(); });
     $('#a-version')?.addEventListener('click', uploadVersion);
@@ -130,11 +129,6 @@ export function renderReview(root, { store, user, reviewId }) {
     });
     $('#a-link')?.addEventListener('click', async () => {
       try { await navigator.clipboard.writeText(location.href); toast(t('linkCopied')); } catch { toast(location.href); }
-    });
-    $('#a-delete')?.addEventListener('click', async () => {
-      if (!(await confirmBox(t('confirmDeleteReview')))) return;
-      await store.deleteReview(r.id);
-      location.hash = '#/';
     });
   }
 

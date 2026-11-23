@@ -1,6 +1,6 @@
 import { t } from '../i18n.js';
 import { config } from '../config.js';
-import { esc, fmtDate, fmtLeft, isClosed, can, h, toast, defaultDeadline, toLocalInput, modal } from '../util.js';
+import { esc, fmtDate, fmtLeft, isClosed, can, h, toast, defaultDeadline, toLocalInput, modal, confirmBox } from '../util.js';
 
 export function renderList(root, { store, user }) {
   root.innerHTML = `
@@ -13,27 +13,80 @@ export function renderList(root, { store, user }) {
     </section>`;
 
   const rows = root.querySelector('#rows');
+  const showMenu = can.upload(user); // only admins can delete a review
   const unsub = store.watchReviews((reviews) => {
     if (!reviews.length) { rows.innerHTML = `<p class="empty">${t('noReviews')}</p>`; return; }
     rows.innerHTML = reviews.map((r) => {
       const closed = isClosed(r);
-      return `<a class="review-row" href="#/review/${encodeURIComponent(r.id)}">
-        <div class="row-main">
-          <span class="row-project">${esc(r.project || '')}</span>
-          <span class="row-title">${esc(r.title)}</span>
-        </div>
-        <div class="row-meta">
-          <span class="chip">${t('version')} ${r.currentVersion || 1}</span>
-          <span class="pill ${closed ? 'pill-closed' : 'pill-open'}">${closed ? t('closed') : t('closesIn', { t: fmtLeft(r.deadline - Date.now()) })}</span>
-          <span class="row-date">${fmtDate(r.deadline)}</span>
-        </div>
-      </a>`;
+      const id = esc(r.id);
+      return `<div class="review-item">
+        <a class="review-row" href="#/review/${encodeURIComponent(r.id)}">
+          <div class="row-main">
+            <span class="row-project">${esc(r.project || '')}</span>
+            <span class="row-title">${esc(r.title)}</span>
+          </div>
+          <div class="row-meta">
+            <span class="chip">${t('version')} ${r.currentVersion || 1}</span>
+            <span class="pill ${closed ? 'pill-closed' : 'pill-open'}">${closed ? t('closed') : t('closesIn', { t: fmtLeft(r.deadline - Date.now()) })}</span>
+            <span class="row-date">${fmtDate(r.deadline)}</span>
+          </div>
+        </a>
+        ${showMenu ? `<div class="row-menu">
+          <button class="row-menu-btn" type="button" data-menu="${id}" aria-haspopup="menu" aria-expanded="false" aria-label="${esc(t('moreActions', { title: r.title }))}">⋮</button>
+          <div class="row-menu-list" role="menu" hidden>
+            <button type="button" role="menuitem" class="danger" data-delete="${id}">${t('deleteReview')}</button>
+          </div>
+        </div>` : ''}
+      </div>`;
     }).join('');
   });
 
+  // Three-dot menu per row (event delegation, since rows re-render on every change)
+  const closeMenus = (except) => {
+    for (const b of rows.querySelectorAll('.row-menu-btn[aria-expanded="true"]')) {
+      if (b === except) continue;
+      b.setAttribute('aria-expanded', 'false');
+      b.nextElementSibling.hidden = true;
+    }
+  };
+  rows.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.row-menu-btn');
+    if (btn) {
+      closeMenus(btn);
+      const open = btn.getAttribute('aria-expanded') !== 'true';
+      btn.setAttribute('aria-expanded', String(open));
+      btn.nextElementSibling.hidden = !open;
+      if (open) btn.nextElementSibling.querySelector('[role=menuitem]')?.focus();
+      return;
+    }
+    const del = e.target.closest('[data-delete]');
+    if (del) {
+      closeMenus();
+      if (!(await confirmBox(t('confirmDeleteReview')))) return;
+      try {
+        await store.deleteReview(del.dataset.delete);
+        toast(t('reviewDeleted'));
+      } catch (ex) {
+        toast(t('errGeneric', { msg: ex.message || ex }));
+      }
+    }
+  });
+  const onDocClick = (e) => { if (!e.target.closest?.('.row-menu')) closeMenus(); };
+  const onDocKey = (e) => {
+    if (e.key !== 'Escape') return;
+    const open = rows.querySelector('.row-menu-btn[aria-expanded="true"]');
+    if (open) { closeMenus(); open.focus(); }
+  };
+  document.addEventListener('click', onDocClick);
+  document.addEventListener('keydown', onDocKey);
+
   root.querySelector('#new-review')?.addEventListener('click', () => openCreate(store));
   root.querySelector('#open-rules')?.addEventListener('click', () => openRules(store));
-  return () => unsub();
+  return () => {
+    unsub();
+    document.removeEventListener('click', onDocClick);
+    document.removeEventListener('keydown', onDocKey);
+  };
 }
 
 async function openRules(store) {
